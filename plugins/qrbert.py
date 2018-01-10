@@ -9,8 +9,6 @@ from urllib.parse import urlparse, parse_qs
 # TODO
 # rotate image 90, 90, 90, collect all codes, unique
 # make function to collect all codes ^^ then another to parse and say them
-# check in to github
-# requirements.txt and etc
 
 class QRBert(Plugin):
 
@@ -38,34 +36,40 @@ class QRBert(Plugin):
 
       
     def scan_image(self, img):
-        ret = '' 
+        ret = []
         syms = [
             'ean13', 'upca', 'ean8', 'upce', 'code128', 'code93', 'code39',
             'i25', 'databar', 'databar-exp', 'qrcode', 'ean5', 'ean2', 
             'composite', 'isbn13', 'isbn10', 'codabar', 'pdf417'
         ]
         for s in syms:
-          try:
-            codes = zbarlight.scan_codes(s, img)
-          except zbarlight.UnknownSymbologieError:
-            continue
-          if codes:
-            for c in codes:
-              c = c.decode()
-              ret += 'Found a %s: << %s >>\n' % (s, c)
-              q = parse_qs(urlparse(c).query)
-              if q:
-                  for (k, v) in q.items():
-                      ret += "    %s -> *%s*\n" % (k, ','.join(v))
+            try:
+                codes = zbarlight.scan_codes(s, img)
+            except zbarlight.UnknownSymbologieError:
+                continue
+            if codes:
+                for c in codes:
+                    c = c.decode()
+                    if c not in ret:
+                        ret.append(c)
         return ret
 
     def do_image(self, url):
+        ret = None
         try:
-          i = self.fetch_image(url)
-          return self.scan_image(i)
+            i = self.fetch_image(url)
+            codes = self.scan_image(i)
+            if codes:
+                ret = 'Found some scannable codes in that image:\n'
+                for c in sorted(codes):
+                    ret += "\t*%s*\n" % c
+                    q = parse_qs(urlparse(c).query)
+                    if q:
+                        for k in sorted(q.keys()):
+                          ret += "\t\t%s -> *%s*\n" % (k, ','.join(q[k]))
         except Exception as e:
           print ("Oops: %r" % e)
-        return None
+        return ret
       
           
         
