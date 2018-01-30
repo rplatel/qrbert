@@ -44,6 +44,7 @@ class QRBert(Plugin):
                         'chat.postMessage',
                         channel=data['channel'],
                         text=resp,
+                        as_user=True,
                         thread_ts=data['ts']
                     )
                     self.slack_client.api_call(
