@@ -7,8 +7,7 @@ import zbarlight
 from urllib.parse import urlparse, parse_qs
 
 # TODO
-# rotate image 90, 90, 90, collect all codes, unique
-# make function to collect all codes ^^ then another to parse and say them
+# Come up with some TODOs
 
 class QRBert(Plugin):
 
@@ -18,12 +17,40 @@ class QRBert(Plugin):
     def process_message(self, data):
         if data.get('subtype', '') == 'file_share':
             if data.get('file', {}).get('mimetype', '').startswith('image'):
+                self.slack_client.api_call(
+                  'reactions.add',
+                  name = 'eyes',
+                  file = data.get('file',{}).get('id'),
+                )
                 resp = self.do_image(data.get('file', {}).get('url_private',''))
+                self.slack_client.api_call(
+                  'reactions.remove',
+                  name = 'eyes',
+                  file = data.get('file',{}).get('id'),
+                )
+                # print (json.dumps(data.get('file'), indent=4))
                 if resp:
-                  self.outputs.append([
-                      data['channel'], 
-                      resp
-                  ])
+                    #self.slack_client.api_call(
+                    #  'files.comments.add',
+                    #  comment = 'FOO: ' + resp,
+                    #  file = data.get('file',{}).get('id'),
+                    #))
+                    #self.outputs.append([
+                    #    data['channel'], 
+                    #    resp
+                    #])
+                    # Post a reply to the file's thread
+                    self.slack_client.api_call(
+                        'chat.postMessage',
+                        channel=data['channel'],
+                        text=resp,
+                        thread_ts=data['ts']
+                    )
+                    self.slack_client.api_call(
+                      'reactions.add',
+                      name = 'musical_keyboard',
+                      file = data.get('file',{}).get('id'),
+                    )
       
     def fetch_image(self, url):
         r = requests.get(url, headers={
@@ -60,13 +87,21 @@ class QRBert(Plugin):
             i = self.fetch_image(url)
             codes = self.scan_image(i)
             if codes:
+                serials = []
                 ret = 'Found some scannable codes in that image:\n'
                 for c in sorted(codes):
+                    if c.startswith('LBAD') or c.startswith('S162V') or c.startswith('261'):
+                      serials.append(c)
                     ret += "\t*%s*\n" % c
                     q = parse_qs(urlparse(c).query)
                     if q:
                         for k in sorted(q.keys()):
                           ret += "\t\t%s -> *%s*\n" % (k, ','.join(q[k]))
+                          if k == 'sn':
+                            serials.extend(q[k])
+                if serials: ret += "\n"
+                for s in serials:
+                  ret += "\t\tMaybe a serial number: *%s*\n" % s
         except Exception as e:
           print ("Oops: %r" % e)
         return ret
