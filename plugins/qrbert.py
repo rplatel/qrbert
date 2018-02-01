@@ -82,6 +82,23 @@ class QRBert(Plugin):
                         ret.append(c)
         return ret
 
+    def process_serial(self, s):
+        """Massage found serial numbers to the format management
+           systems expect"""
+        if s.startswith('LBADTN'):
+            return 'ADTN' + s[6:].lower()
+        if s.startswith('CXNK'):
+            return s[-6:].lower()
+        #else
+        return s
+
+    def is_serial(self, s):
+        prefixes = ['LBAD', 'S162V', 'S172V', '261', 'CXNK']
+        for p in prefixes:
+          if s.startswith(p):
+            return True
+        return False
+
     def do_image(self, url):
         ret = None
         try:
@@ -91,7 +108,7 @@ class QRBert(Plugin):
                 serials = []
                 ret = 'Found some scannable codes in that image:\n'
                 for c in sorted(codes):
-                    if c.startswith('LBAD') or c.startswith('S162V') or c.startswith('261'):
+                    if self.is_serial(c):
                       serials.append(c)
                     ret += "\t*%s*\n" % c
                     q = parse_qs(urlparse(c).query)
@@ -102,7 +119,7 @@ class QRBert(Plugin):
                             serials.extend(q[k])
                 if serials: ret += "\n"
                 for s in serials:
-                  ret += "\t\tMaybe a serial number: *%s*\n" % s
+                  ret += "\t\tMaybe a serial number: *%s*\n" % self.process_serial(s)
         except Exception as e:
           print ("Oops: %r" % e)
         return ret
