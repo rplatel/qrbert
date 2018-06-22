@@ -52,13 +52,13 @@ class QRBert(Plugin):
 
                     # Post a reply to the file's thread (mobile users can't 
                     # see these?)
-                    #self.slack_client.api_call(
-                        #'chat.postMessage',
-                        #channel=data['channel'],
-                        #text=resp,
-                        #as_user=True,
-                        #thread_ts=data['ts']
-                    #)
+                    self.slack_client.api_call(
+                        'chat.postMessage',
+                        channel=data['channel'],
+                        text=resp,
+                        as_user=True,
+                        thread_ts=data['ts']
+                    )
                     self.slack_client.api_call(
                       'reactions.add',
                       name = 'musical_keyboard',
