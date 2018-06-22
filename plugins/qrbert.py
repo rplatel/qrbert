@@ -22,7 +22,14 @@ class QRBert(Plugin):
                   name = 'eyes',
                   file = data.get('file',{}).get('id'),
                 )
-                resp = self.do_image(data.get('file', {}).get('url_private',''))
+                user = self.slack_client.api_call(
+                    'users.info',
+                    user = data['user']
+                ).get('user', {}).get('real_name')
+                resp = self.do_image(
+                    data.get('file', {}).get('url_private',''),
+                    user=user
+                )
                 self.slack_client.api_call(
                   'reactions.remove',
                   name = 'eyes',
@@ -30,23 +37,28 @@ class QRBert(Plugin):
                 )
                 # print (json.dumps(data.get('file'), indent=4))
                 if resp:
+                    # add as a file comment (doesn't work?)
                     #self.slack_client.api_call(
                     #  'files.comments.add',
                     #  comment = 'FOO: ' + resp,
                     #  file = data.get('file',{}).get('id'),
                     #))
-                    #self.outputs.append([
-                    #    data['channel'], 
-                    #    resp
-                    #])
-                    # Post a reply to the file's thread
-                    self.slack_client.api_call(
-                        'chat.postMessage',
-                        channel=data['channel'],
-                        text=resp,
-                        as_user=True,
-                        thread_ts=data['ts']
-                    )
+
+                    # Send as message to the channel
+                    self.outputs.append([
+                        data['channel'], 
+                        resp
+                    ])
+
+                    # Post a reply to the file's thread (mobile users can't 
+                    # see these?)
+                    #self.slack_client.api_call(
+                        #'chat.postMessage',
+                        #channel=data['channel'],
+                        #text=resp,
+                        #as_user=True,
+                        #thread_ts=data['ts']
+                    #)
                     self.slack_client.api_call(
                       'reactions.add',
                       name = 'musical_keyboard',
@@ -99,14 +111,17 @@ class QRBert(Plugin):
             return True
         return False
 
-    def do_image(self, url):
+    def do_image(self, url, user=None):
         ret = None
         try:
             i = self.fetch_image(url)
             codes = self.scan_image(i)
             if codes:
                 serials = []
-                ret = 'Found some scannable codes in that image:\n'
+                if user:
+                    ret = "Found some scannable codes in {}'s image:\n".format(user)
+                else:
+                    ret = 'Found some scannable codes in that image:\n'
                 for c in sorted(codes):
                     if self.is_serial(c):
                       serials.append(c)
