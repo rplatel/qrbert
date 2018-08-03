@@ -15,25 +15,27 @@ class QRBert(Plugin):
     #    print(json.dumps(data, indent=4))
 
     def process_message(self, data):
-        if data.get('subtype', '') == 'file_share':
-            if data.get('file', {}).get('mimetype', '').startswith('image'):
+        for f in data.get('files', []):
+            if f.get('mimetype', '').startswith('image'):
                 self.slack_client.api_call(
                   'reactions.add',
                   name = 'eyes',
-                  file = data.get('file',{}).get('id'),
+                  channel = data.get('channel'),
+                  timestamp = data.get('ts')
                 )
                 user = self.slack_client.api_call(
                     'users.info',
                     user = data['user']
                 ).get('user', {}).get('real_name')
                 resp = self.do_image(
-                    data.get('file', {}).get('url_private',''),
+                    f.get('url_private',''),
                     user=user
                 )
                 self.slack_client.api_call(
                   'reactions.remove',
                   name = 'eyes',
-                  file = data.get('file',{}).get('id'),
+                  channel = data.get('channel'),
+                  timestamp = data.get('ts')
                 )
                 # print (json.dumps(data.get('file'), indent=4))
                 if resp:
@@ -52,17 +54,18 @@ class QRBert(Plugin):
 
                     # Post a reply to the file's thread (mobile users can't 
                     # see these?)
-                    self.slack_client.api_call(
-                        'chat.postMessage',
-                        channel=data['channel'],
-                        text=resp,
-                        as_user=True,
-                        thread_ts=data['ts']
-                    )
+                    #self.slack_client.api_call(
+                        #'chat.postMessage',
+                        #channel=data['channel'],
+                        #text=resp,
+                        #as_user=True,
+                        #thread_ts=data['ts']
+                    #)
                     self.slack_client.api_call(
                       'reactions.add',
                       name = 'musical_keyboard',
-                      file = data.get('file',{}).get('id'),
+                      channel = data.get('channel'),
+                      timestamp = data.get('ts')
                     )
       
     def fetch_image(self, url):
